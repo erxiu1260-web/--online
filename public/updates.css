@@ -1,0 +1,6 @@
+/* The 15 cell centres coincide exactly with the 15 horizontal/vertical lines. */
+.room-box button,.restart,.undo{font:inherit;border:0;border-radius:9px;padding:10px 12px;cursor:pointer;width:100%;font-weight:700}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.undo{background:#f1e7db;color:#71422c}
+.undo:disabled{opacity:.5;cursor:not-allowed}
+.board{background-size:calc(100% / 15) calc(100% / 15);background-position:calc(100% / 30) calc(100% / 30)}

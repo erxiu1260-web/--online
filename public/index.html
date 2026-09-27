@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>云端五子棋</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="updates.css" />
 </head>
 <body>
   <main class="app-shell">
@@ -14,7 +15,7 @@
         <div class="room-box"><span>当前房间</span><strong id="room-code">—</strong><button id="copy-link">复制邀请链接</button></div>
         <div class="status" id="status" aria-live="polite">正在连接…</div>
         <div class="players"><div><i class="stone black"></i><span>黑方 · 先手</span><b id="black-player">等待加入</b></div><div><i class="stone white"></i><span>白方</span><b id="white-player">等待加入</b></div></div>
-        <button class="restart" id="restart">重新开始</button>
+        <div class="actions"><button class="undo" id="undo">请求悔棋</button><button class="restart" id="restart">重新开始</button></div>
         <p class="tip">规则：横、竖、斜线任意连成五子即可获胜。</p>
       </aside>
       <section class="board-wrap"><div id="board" class="board" aria-label="五子棋棋盘"></div></section>

@@ -23,7 +23,9 @@ function render() {
   }));
   blackPlayerEl.textContent = state.playerCount >= 1 ? '已加入' : '等待加入';
   whitePlayerEl.textContent = state.playerCount >= 2 ? '已加入' : '等待朋友加入';
-  if (state.winner === 'draw') statusEl.textContent = '棋盘已满，平局！';
+  document.querySelector('#undo').disabled = !state.board.some(line => line.some(Boolean)) || Boolean(state.undoPending);
+  if (state.undoPending) statusEl.textContent = state.undoPending === myColor ? '已发送悔棋请求，等待对方同意…' : `${label(state.undoPending)}请求悔棋`;
+  else if (state.winner === 'draw') statusEl.textContent = '棋盘已满，平局！';
   else if (state.winner) statusEl.textContent = `${label(state.winner)}获胜！`;
   else if (state.playerCount < 2) statusEl.textContent = myColor === 'black' ? '等待朋友加入房间…' : '房间观战中，等待下一局';
   else statusEl.textContent = state.turn === myColor ? '轮到你落子' : `轮到${label(state.turn)}落子`;
@@ -32,5 +34,11 @@ socket.on('connect', () => socket.emit('join', { roomId }));
 socket.on('joined', data => { myColor = data.color; state = data.state; render(); if (myColor === 'spectator') toast('房间已满，正在观战'); });
 socket.on('state', next => { state = next; render(); });
 socket.on('errorMessage', toast);
+socket.on('undoRequest', ({ from }) => {
+  const accepted = confirm(`${label(from)}请求悔棋，是否同意？`);
+  socket.emit('respondUndo', { accepted });
+});
+socket.on('undoResult', ({ accepted }) => toast(accepted ? '对方已同意悔棋' : '对方拒绝了悔棋请求'));
 document.querySelector('#copy-link').addEventListener('click', async () => { try { await navigator.clipboard.writeText(location.href); toast('邀请链接已复制'); } catch { prompt('复制这个链接给朋友：', location.href); } });
 document.querySelector('#restart').addEventListener('click', () => socket.emit('restart'));
+document.querySelector('#undo').addEventListener('click', () => socket.emit('requestUndo'));
