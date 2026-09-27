@@ -15,14 +15,14 @@ function createRoom(roomId) {
   return {
     board: Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null)),
     players: { black: null, white: null },
-    turn: 'black', winner: null, lastMove: null
+    turn: 'black', winner: null, lastMove: null, history: [], undoRequest: null
   };
 }
 
 function roomState(room) {
   return {
     board: room.board, turn: room.turn, winner: room.winner,
-    lastMove: room.lastMove,
+    lastMove: room.lastMove, undoPending: room.undoRequest?.from || null,
     playerCount: Number(Boolean(room.players.black)) + Number(Boolean(room.players.white))
   };
 }
@@ -66,6 +66,7 @@ io.on('connection', socket => {
       row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE || room.board[row][col]) return;
     room.board[row][col] = color;
     room.lastMove = { row, col, color };
+    room.history.push(room.lastMove);
     if (hasFive(room.board, row, col, color)) room.winner = color;
     else if (room.board.every(line => line.every(Boolean))) room.winner = 'draw';
     else room.turn = color === 'black' ? 'white' : 'black';
@@ -77,7 +78,34 @@ io.on('connection', socket => {
     const room = rooms.get(roomId);
     if (!room || !['black', 'white'].includes(color)) return;
     room.board = Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null));
-    room.turn = 'black'; room.winner = null; room.lastMove = null;
+    room.turn = 'black'; room.winner = null; room.lastMove = null; room.history = []; room.undoRequest = null;
+    emitState(roomId, room);
+  });
+
+  socket.on('requestUndo', () => {
+    const { roomId, color } = socket.data;
+    const room = rooms.get(roomId);
+    if (!room || !['black', 'white'].includes(color) || !room.history.length || room.undoRequest) return;
+    const opponent = color === 'black' ? 'white' : 'black';
+    if (!room.players[opponent]) return socket.emit('errorMessage', '对手不在线，无法请求悔棋。');
+    room.undoRequest = { from: color };
+    io.to(room.players[opponent]).emit('undoRequest', { from: color });
+    emitState(roomId, room);
+  });
+
+  socket.on('respondUndo', ({ accepted }) => {
+    const { roomId, color } = socket.data;
+    const room = rooms.get(roomId);
+    if (!room?.undoRequest || room.undoRequest.from === color || !['black', 'white'].includes(color)) return;
+    if (accepted) {
+      const move = room.history.pop();
+      room.board[move.row][move.col] = null;
+      room.lastMove = room.history.at(-1) || null;
+      room.turn = move.color;
+      room.winner = null;
+    }
+    room.undoRequest = null;
+    io.to(roomId).emit('undoResult', { accepted: Boolean(accepted) });
     emitState(roomId, room);
   });
 
@@ -86,6 +114,7 @@ io.on('connection', socket => {
     const room = rooms.get(roomId);
     if (!room) return;
     if (room.players[color] === socket.id) room.players[color] = null;
+    if (['black', 'white'].includes(color) && room.undoRequest) room.undoRequest = null;
     emitState(roomId, room);
     if (!room.players.black && !room.players.white) rooms.delete(roomId);
   });
